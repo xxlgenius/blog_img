@@ -1,0 +1,45 @@
+name: Hexo Deploy
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    if: github.event.repository.owner.id == github.event.sender.id
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+        with:
+          ref: master
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: '18'
+          
+      - name: Setup Hexo
+        env:
+          ACTION_DEPLOY_KEY: ${{ secrets.HEXO_DEPLOY }}
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$ACTION_DEPLOY_KEY" > ~/.ssh/id_rsa
+          chmod 700 ~/.ssh
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          git config --global user.email "hszhangown@gmail.com"
+          git config --global user.name "xxlgenius"
+          git submodule update --init --recursive
+          npm install hexo-cli -g
+          npm install
+          rm themes/hexo-theme-butterfly/_config.yml
+          cp _config.butterfly.yml themes/hexo-theme-butterfly/_config.yml
+
+      - name: Deploy
+        run: |
+          hexo clean
+          hexo g --debug
+          hexo deploy
